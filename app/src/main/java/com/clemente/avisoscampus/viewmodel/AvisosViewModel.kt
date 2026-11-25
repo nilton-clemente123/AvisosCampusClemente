@@ -6,6 +6,9 @@ import com.clemente.avisoscampus.data.AvisosRepository
 import com.clemente.avisoscampus.model.Aviso
 import com.clemente.avisoscampus.model.Origen
 import com.clemente.avisoscampus.model.PermisoUi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -13,9 +16,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.ensureActive
 import kotlin.coroutines.coroutineContext
 
 class AvisosViewModel(private val repo: AvisosRepository) : ViewModel() {
@@ -48,6 +48,11 @@ class AvisosViewModel(private val repo: AvisosRepository) : ViewModel() {
 
     fun permisoRespondido(concedido: Boolean) {
         _permiso.value = if (concedido) PermisoUi.Concedido else PermisoUi.Denegado
+        if (concedido) _mensaje.value = null
+    }
+
+    fun noSePudoMostrar() {
+        _mensaje.value = "Sin permiso: el aviso se guardó en el historial, pero no se mostró"
     }
 
     fun avisarAhora() {

@@ -1,9 +1,10 @@
 package com.clemente.avisoscampus.ui
 
 import android.Manifest
-import android.os.Build
 import android.content.Intent
 import android.content.IntentFilter
+import android.os.Build
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -20,13 +21,14 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -34,6 +36,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import com.clemente.avisoscampus.model.PermisoUi
 import com.clemente.avisoscampus.notificacion.Notificador
 import com.clemente.avisoscampus.receiver.ModoAvionReceiver
@@ -47,6 +50,7 @@ fun PantallaAvisos(vm: AvisosViewModel) {
     val faltan by vm.faltan.collectAsState()
     val escuchando by vm.escuchandoAvion.collectAsState()
     val avisos by vm.avisos.collectAsState()
+    val mensaje by vm.mensaje.collectAsState()
     val lanzador = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
         vm.permisoRespondido(it)
     }
@@ -54,7 +58,9 @@ fun PantallaAvisos(vm: AvisosViewModel) {
         if (Notificador.tienePermiso(contexto)) vm.permisoRespondido(true)
     }
     LaunchedEffect(vm) {
-        vm.eventos.collect { aviso -> Notificador.mostrar(contexto, aviso) }
+        vm.eventos.collect { aviso ->
+            if (!Notificador.mostrar(contexto, aviso)) vm.noSePudoMostrar()
+        }
     }
     DisposableEffect(contexto, escuchando) {
         val receptor = if (escuchando) {
@@ -99,6 +105,25 @@ fun PantallaAvisos(vm: AvisosViewModel) {
                         vm.permisoRespondido(true)
                     }
                 }) { Text("Permitir notificaciones") }
+                if (permiso == PermisoUi.Denegado || mensaje != null) {
+                    OutlinedButton(onClick = {
+                        val ajustes = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                                .putExtra(Settings.EXTRA_APP_PACKAGE, contexto.packageName)
+                        } else {
+                            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                                .setData("package:${contexto.packageName}".toUri())
+                        }
+                        contexto.startActivity(ajustes)
+                    }) { Text("Abrir ajustes") }
+                }
+                mensaje?.let {
+                    Surface(
+                        color = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                        shape = MaterialTheme.shapes.medium
+                    ) { Text(it, modifier = Modifier.padding(12.dp)) }
+                }
             }
             TarjetaAvisos("Avisos") {
                 Button(onClick = vm::avisarAhora) { Text("Mostrar aviso") }

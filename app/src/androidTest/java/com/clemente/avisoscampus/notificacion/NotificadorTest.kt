@@ -2,6 +2,8 @@ package com.clemente.avisoscampus.notificacion
 
 import android.app.NotificationManager
 import android.app.Notification
+import android.content.ContextWrapper
+import android.content.pm.PackageManager
 import android.Manifest
 import android.os.Build
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -10,12 +12,29 @@ import com.clemente.avisoscampus.model.Aviso
 import com.clemente.avisoscampus.model.Origen
 import org.junit.Assert.assertTrue
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class NotificadorTest {
+    @Test
+    fun sinPermisoNoNotificaNiLanzaError() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        val context = object : ContextWrapper(
+            InstrumentationRegistry.getInstrumentation().targetContext
+        ) {
+            override fun checkPermission(permission: String, pid: Int, uid: Int): Int =
+                if (permission == Manifest.permission.POST_NOTIFICATIONS) {
+                    PackageManager.PERMISSION_DENIED
+                } else super.checkPermission(permission, pid, uid)
+        }
+        assertFalse(Notificador.mostrar(
+            context, Aviso(903, "Sin permiso", "Texto", Origen.BOTON, "12:00:00")
+        ))
+    }
+
     @Test
     fun muestraDosAvisosSinReemplazarlos() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
