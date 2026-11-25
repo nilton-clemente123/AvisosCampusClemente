@@ -39,6 +39,7 @@ import com.clemente.avisoscampus.viewmodel.AvisosViewModel
 fun PantallaAvisos(vm: AvisosViewModel) {
     val contexto = LocalContext.current
     val permiso by vm.permiso.collectAsState()
+    val faltan by vm.faltan.collectAsState()
     val lanzador = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
         vm.permisoRespondido(it)
     }
@@ -83,8 +84,13 @@ fun PantallaAvisos(vm: AvisosViewModel) {
                 Button(onClick = vm::avisarAhora) { Text("Mostrar aviso") }
             }
             TarjetaAvisos("Recordatorio") {
-                Button(onClick = {}, enabled = false) { Text("Recordar en 10 s") }
-                OutlinedButton(onClick = {}, enabled = false) { Text("Cancelar") }
+                Button(onClick = { vm.recordarEn() }, enabled = faltan == null) {
+                    Text("Recordar en 10 s")
+                }
+                OutlinedButton(onClick = vm::cancelarRecordatorio, enabled = faltan != null) {
+                    Text("Cancelar")
+                }
+                faltan?.let { Text("Faltan $it s") }
             }
             TarjetaAvisos("Receptor de anuncios") {
                 Text("Escuchar el modo avión")
