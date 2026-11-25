@@ -34,11 +34,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import com.clemente.avisoscampus.model.PermisoUi
 import com.clemente.avisoscampus.notificacion.Notificador
+import com.clemente.avisoscampus.receiver.CargadorReceiver
 import com.clemente.avisoscampus.receiver.ModoAvionReceiver
 import com.clemente.avisoscampus.viewmodel.AvisosViewModel
 
@@ -49,6 +52,7 @@ fun PantallaAvisos(vm: AvisosViewModel) {
     val permiso by vm.permiso.collectAsState()
     val faltan by vm.faltan.collectAsState()
     val escuchando by vm.escuchandoAvion.collectAsState()
+    val escuchandoCargador by vm.escuchandoCargador.collectAsState()
     val avisos by vm.avisos.collectAsState()
     val mensaje by vm.mensaje.collectAsState()
     val lanzador = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
@@ -68,6 +72,21 @@ fun PantallaAvisos(vm: AvisosViewModel) {
                 ContextCompat.registerReceiver(
                     contexto, it, IntentFilter(Intent.ACTION_AIRPLANE_MODE_CHANGED),
                     ContextCompat.RECEIVER_NOT_EXPORTED
+                )
+            }
+        } else null
+        onDispose {
+            receptor?.let(contexto::unregisterReceiver)
+        }
+    }
+    DisposableEffect(contexto, escuchandoCargador) {
+        val receptor = if (escuchandoCargador) {
+            CargadorReceiver(vm::alCambiarCargador).also {
+                val filtro = IntentFilter(Intent.ACTION_POWER_CONNECTED).apply {
+                    addAction(Intent.ACTION_POWER_DISCONNECTED)
+                }
+                ContextCompat.registerReceiver(
+                    contexto, it, filtro, ContextCompat.RECEIVER_NOT_EXPORTED
                 )
             }
         } else null
@@ -140,7 +159,17 @@ fun PantallaAvisos(vm: AvisosViewModel) {
             }
             TarjetaAvisos("Receptor de anuncios") {
                 Text("Escuchar el modo avión")
-                Switch(checked = escuchando, onCheckedChange = vm::cambiarEscucha)
+                Switch(
+                    checked = escuchando,
+                    onCheckedChange = vm::cambiarEscucha,
+                    modifier = Modifier.semantics { contentDescription = "Escuchar el modo avión" }
+                )
+                Text("Escuchar el cargador")
+                Switch(
+                    checked = escuchandoCargador,
+                    onCheckedChange = vm::cambiarEscuchaCargador,
+                    modifier = Modifier.semantics { contentDescription = "Escuchar el cargador" }
+                )
             }
             HistorialAvisos(avisos)
         }

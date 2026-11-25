@@ -13,11 +13,42 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertFalse
 import org.junit.Test
 import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class AvisosViewModelEventosTest {
+    @Test
+    fun cargadorSoloRegistraSiEscuchaYSuSwitchEsIndependienteDelModoAvion() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val vm = AvisosViewModel(AvisosRepositoryMemoria())
+        val eventos = CopyOnWriteArrayList<Aviso>()
+        val scope = CoroutineScope(Dispatchers.Main.immediate)
+        try {
+            instrumentation.runOnMainSync {
+                scope.launch { vm.eventos.collect { eventos.add(it) } }
+                assertFalse(vm.escuchandoCargador.value)
+                vm.alCambiarCargador(true)
+                assertTrue(vm.avisos.value.isEmpty())
+                vm.cambiarEscuchaCargador(true)
+                assertFalse(vm.escuchandoAvion.value)
+                vm.alCambiarCargador(true)
+                vm.alCambiarCargador(false)
+                vm.cambiarEscucha(true)
+                vm.cambiarEscuchaCargador(false)
+                assertTrue(vm.escuchandoAvion.value)
+                vm.alCambiarCargador(true)
+            }
+            instrumentation.waitForIdleSync()
+            assertEquals(listOf("Conectado", "Desconectado"), eventos.map { it.texto })
+            assertTrue(eventos.all { it.origen == Origen.CARGADOR && it.prioridad == PrioridadAviso.NORMAL })
+            assertEquals(eventos.reversed(), vm.avisos.value)
+        } finally {
+            instrumentation.runOnMainSync { scope.cancel() }
+        }
+    }
+
     @Test
     fun avisoLargoSeRegistraCompletoYSeEmiteSinCambiarElAvisoOriginal() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()

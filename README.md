@@ -1,9 +1,12 @@
-# AvisosCampus — Fase 1
+# AvisosCampus — Fases 1 y 2
 
 Aplicación de laboratorio para practicar notificaciones locales y anuncios del sistema con
 **Kotlin, Jetpack Compose y Material 3**, siguiendo **MVVM + Repository**.
 Se construyó desde la plantilla de Android Studio, sin importar un proyecto con avances.
 Todos los mensajes son ficticios. No utiliza un servidor, Firebase ni claves.
+
+`main` conserva la fase 1. La rama `mejora-ia` contiene las tres mejoras de la fase 2.
+El registro real de asistencia, decisiones y pruebas está en `PROMPTS.md`.
 
 ## Funciones
 
@@ -15,6 +18,61 @@ Todos los mensajes son ficticios. No utiliza un servidor, Firebase ni claves.
 - Escucha opcional de los cambios de modo avión mediante un receptor dinámico.
 - Historial en memoria con origen, título, texto y hora; muestra los **20 más recientes**.
 - Mensaje de error y acceso a Ajustes cuando no se puede mostrar una notificación.
+
+## Fase 2 — Mejoras con IA
+
+Se implementaron tres mejoras sin añadir dependencias ni introducir APIs Android en el ViewModel.
+Esta asistencia corresponde a ChatGPT/Cline; no se atribuye a Gemini.
+
+| Mejora | Implementación y criterio |
+|---|---|
+| Dos canales | **Avisos** conserva el ID `avisos` y `IMPORTANCE_DEFAULT`. **Urgentes** usa `urgentes` e `IMPORTANCE_HIGH`. El ViewModel asigna `PrioridadAviso.URGENTE` al recordatorio y el Repository conserva esa prioridad. Solo el Notificador traduce el dato a un canal Android. |
+| Texto largo | `BigTextStyle` recibe el texto completo de cada aviso. **Mostrar aviso largo** genera un mensaje ficticio para comprobarlo; el aviso corto original no se modifica. |
+| Receptor del cargador | `CargadorReceiver` recibe conexión/desconexión y delega al ViewModel. Tiene switch y StateFlow independientes del modo avión. El aviso se guarda con origen **Cargador** y usa el canal normal. |
+
+La primera mejora cambia el Repository y el ViewModel; la tercera también cambia el ViewModel.
+Se mantiene MVVM y ambos receptores se retiran en sus respectivos `onDispose`.
+
+### Cómo probar las mejoras
+
+1. Conceder el permiso y verificar que aparecen **Avisos** y **Urgentes** en los ajustes de la app.
+2. Pulsar **Recordar en 10 s**: el aviso final utiliza Urgentes. La aparición emergente depende
+   de la configuración del usuario, No molestar y el sistema; no se garantiza en todo dispositivo.
+   En API 24–25 se usa prioridad alta y sonido, porque no existen canales.
+3. Pulsar **Mostrar aviso largo** y expandir la notificación: debe verse el mensaje completo.
+4. Activar **Escuchar el cargador** y conectar/desconectar la alimentación: deben aparecer avisos
+   e historial con **Conectado / Desconectado**. El switch de modo avión debe permanecer igual.
+5. Desactivar la escucha y repetir: no deben agregarse nuevos avisos del cargador.
+
+En el emulador, simular la alimentación desde una terminal, sin ejecutar las pruebas instrumentadas
+al mismo tiempo:
+
+```sh
+adb emu power ac on
+adb emu power ac off
+```
+
+### Capturas reales de fase 2
+
+La primera captura muestra el recordatorio en el panel. La selección de canal e importancia se
+comprobó además por prueba instrumentada y por `dumpsys notification`; la imagen por sí sola
+no demuestra una aparición emergente.
+
+<img src="docs/capturas/fase2/01-recordatorio-urgente.png" alt="Recordatorio publicado en el canal Urgentes" width="300" />
+<img src="docs/capturas/fase2/02-texto-expandido.png" alt="Aviso del campus expandido con el texto completo" width="300" />
+<img src="docs/capturas/fase2/03-cargador.png" alt="Switch independiente del cargador e historial de conexión y desconexión" width="300" />
+
+### Validación de fase 2
+
+En el emulador API 37, el **25 de noviembre de 2026**:
+
+- Compilación correcta.
+- **6 pruebas unitarias y 15 instrumentadas, sin fallos**.
+- Lint: **0 errores y 12 advertencias** de plantilla o versiones.
+- Pruebas de canales/selección, prioridad persistida en memoria, texto completo y eventos del ViewModel.
+- Pruebas del receptor, independencia de switches y recreación de Activity.
+- Verificación manual de los cambios de alimentación con escucha activa/inactiva y del texto expandido.
+- Sin pruebas en un dispositivo físico o en API 24–32.
 
 ## Entorno y ejecución
 
@@ -49,13 +107,14 @@ com.clemente.avisoscampus/
 ├── AvisosApp.kt
 ├── MainActivity.kt
 ├── model/
-│   └── Modelos.kt                  # Aviso, Origen y PermisoUi
+│   └── Modelos.kt                  # Aviso, Origen, PermisoUi y PrioridadAviso
 ├── data/
 │   └── AvisosRepository.kt          # Interface e implementación en memoria
 ├── notificacion/
 │   └── Notificador.kt              # Canal, permiso y acceso al sistema
 ├── receiver/
-│   └── ModoAvionReceiver.kt         # Traduce el anuncio en un callback
+│   ├── ModoAvionReceiver.kt         # Traduce el anuncio en un callback
+│   └── CargadorReceiver.kt          # Conexión/desconexión de alimentación (fase 2)
 ├── viewmodel/
 │   ├── AvisosViewModel.kt           # Estado, decisiones y eventos
 │   └── AvisosViewModelFactory.kt
@@ -86,16 +145,16 @@ Usuario ── botones / switch ──> PantallaAvisos
 StateFlow: historial, permiso, mensaje, cuenta regresiva y estado del switch
 ViewModel ────────────────────────────────────────────> PantallaAvisos
 
-Android ──> ModoAvionReceiver ── callback ──> AvisosViewModel
+Android ──> ModoAvionReceiver / CargadorReceiver ── callback ──> AvisosViewModel
 ```
 
 El ViewModel solo conoce la interface del Repository: **no recibe `android.content.Context`,
 `NotificationManager` ni `BroadcastReceiver`**. Registra el aviso antes de emitir el evento.
 La pantalla recoge ese evento y llama al Notificador.
-El receptor se registra en un `DisposableEffect` cuando el switch está activo y se retira
+Cada receptor se registra en su propio `DisposableEffect` cuando su switch está activo y se retira
 en su `onDispose`. `HistorialAvisos` recibe únicamente una lista y no conoce el ViewModel.
 
-## Capturas reales
+## Capturas reales de fase 1
 
 Capturadas el **25 de noviembre de 2026** en el emulador `Medium_Phone_API_37.0`.
 La interfaz del sistema del emulador está en inglés; la aplicación está en español.
@@ -122,7 +181,8 @@ La interfaz del sistema del emulador está en inglés; la aplicación está en e
 
 ## Validación de la fase 1
 
-Última ejecución completa: **25 de noviembre de 2026**.
+Resultados al cerrar la fase 1 el **25 de noviembre de 2026**. La validación de la versión
+actual está en la sección de fase 2; las cinco capturas originales se conservan como evidencia histórica.
 
 - `assembleDebug`: correcto.
 - Pruebas unitarias: **5 ejecutadas, 0 fallos**.
@@ -171,7 +231,10 @@ están protegidas por comprobaciones de versión y revisadas con Lint.
 - Además del permiso, se comprueba si las notificaciones o el canal están bloqueados. El mensaje
   de error conserva el texto literal solicitado por la guía.
 - En API 26+ se abre la pantalla de notificaciones; en API 24–25 se abre la ficha de la aplicación.
-- Solo se ha realizado la **fase 1**. No hay persistencia, canales adicionales, Firebase ni rama `mejora-ia`.
+- En `main` se conserva únicamente la fase 1. En `mejora-ia` se añaden dos canales, texto expandible
+  y el receptor del cargador. No se añadieron persistencia, posposición ni Firebase.
+- Escuchar el cargador informa cambios mientras el receptor está registrado; activarlo no genera
+  una lectura inicial de la batería. Ambos switches comienzan apagados en una nueva sesión.
 
 ## Para pensar
 
@@ -223,5 +286,12 @@ Una push no reemplaza las comprobaciones del permiso ni la configuración del ca
 9. `feat(errores): maneja el permiso de notificaciones denegado`
 10. `docs: agrega README con estructura y capturas`
 
-El repositorio local utiliza `main`. La publicación está pendiente de configurar un remoto elegido
-por el propietario; no se ha creado ningún repositorio externo ni realizado un push.
+### Commits de fase 2 (`mejora-ia`)
+
+1. `feat(notificacion): separa canales Avisos y Urgentes para recordatorios`
+2. `feat(notificacion): expande texto largo con BigTextStyle`
+3. `feat(receptor): escucha el cargador con switch independiente`
+
+Los commits de fase 1 siguen en `main`; no se ha fusionado `mejora-ia`.
+Existe un remoto `origin` configurado por el propietario. En esta sesión no se ha realizado
+ningún push ni verificado el contenido publicado en ese remoto.

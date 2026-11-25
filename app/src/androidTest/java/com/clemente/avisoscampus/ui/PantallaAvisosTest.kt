@@ -3,6 +3,10 @@ package com.clemente.avisoscampus.ui
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.clemente.avisoscampus.MainActivity
@@ -18,6 +22,19 @@ import org.junit.runner.RunWith
 class PantallaAvisosTest {
     @get:Rule
     val compose = createAndroidComposeRule<MainActivity>()
+
+    @Test
+    fun switchesIndependientesConservanSuEstadoAlRecrearActivity() {
+        val avion = compose.onNodeWithContentDescription("Escuchar el modo avión")
+        val cargador = compose.onNodeWithContentDescription("Escuchar el cargador")
+        avion.performScrollTo().assertIsOff()
+        cargador.performScrollTo().assertIsOff().performClick().assertIsOn()
+        avion.performScrollTo().assertIsOff().performClick().assertIsOn()
+        compose.activityRule.scenario.recreate()
+        compose.waitForIdle()
+        cargador.performScrollTo().assertIsOn().performClick().assertIsOff()
+        avion.performScrollTo().assertIsOn().performClick().assertIsOff()
+    }
 
     @Test
     fun recrearActivityConservaHistorialYRecordatorio() {
