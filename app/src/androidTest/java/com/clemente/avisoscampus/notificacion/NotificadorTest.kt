@@ -9,6 +9,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.clemente.avisoscampus.model.Aviso
 import com.clemente.avisoscampus.model.Origen
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -34,6 +35,11 @@ class NotificadorTest {
                 it.notification.flags and Notification.FLAG_GROUP_SUMMARY == 0
             }
             assertEquals(setOf(901, 902), individuales.map { it.id }.toSet())
+            individuales.forEach {
+                assertNotNull(it.notification.contentIntent)
+                assertTrue(it.notification.contentIntent.isImmutable)
+                assertTrue(it.notification.flags and Notification.FLAG_AUTO_CANCEL != 0)
+            }
         } finally {
             manager.cancelAll()
         }
