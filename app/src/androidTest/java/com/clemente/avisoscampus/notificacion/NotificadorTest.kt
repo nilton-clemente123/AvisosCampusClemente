@@ -21,6 +21,30 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class NotificadorTest {
     @Test
+    fun conservaTextoCompletoEnLaNotificacionExpandida() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val context = instrumentation.targetContext
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            instrumentation.uiAutomation.grantRuntimePermission(
+                context.packageName, Manifest.permission.POST_NOTIFICATIONS
+            )
+        }
+        val manager = context.getSystemService(NotificationManager::class.java)
+        val texto = "Detalle del laboratorio ficticio. ".repeat(20) + "Fin del mensaje."
+        try {
+            assertTrue(Notificador.mostrar(
+                context, Aviso(904, "Texto largo", texto, Origen.BOTON, "12:00:00")
+            ))
+            Thread.sleep(500)
+            val notificacion = manager.activeNotifications.single { it.id == 904 }.notification
+            assertEquals(texto, notificacion.extras.getCharSequence(Notification.EXTRA_TEXT).toString())
+            assertEquals(texto, notificacion.extras.getCharSequence(Notification.EXTRA_BIG_TEXT).toString())
+        } finally {
+            manager.cancel(904)
+        }
+    }
+
+    @Test
     fun sinPermisoNoNotificaNiLanzaError() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
         val context = object : ContextWrapper(

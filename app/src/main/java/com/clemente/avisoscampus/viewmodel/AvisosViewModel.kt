@@ -63,6 +63,21 @@ class AvisosViewModel(private val repo: AvisosRepository) : ViewModel() {
         }
     }
 
+    fun avisarTextoLargo() {
+        viewModelScope.launch {
+            val aviso = repo.registrar(
+                "Aviso del campus",
+                "Este viernes se realizará una jornada ficticia de proyectos en el campus. " +
+                    "Revisa los objetivos de tu laboratorio, prepara una demostración de tu aplicación " +
+                    "y comprueba el permiso de notificaciones antes de comenzar. " +
+                    "Lleva tus preguntas sobre MVVM, corrutinas y receptores para compartirlas con el grupo. " +
+                    "Este mensaje es solo una demostración: no anuncia una actividad real.",
+                Origen.BOTON
+            )
+            _eventos.emit(aviso)
+        }
+    }
+
     fun recordarEn(segundos: Int = 10) {
         if (trabajo?.isActive == true) return
         require(segundos > 0) { "El recordatorio debe durar al menos un segundo" }

@@ -127,6 +127,7 @@ fun PantallaAvisos(vm: AvisosViewModel) {
             }
             TarjetaAvisos("Avisos") {
                 Button(onClick = vm::avisarAhora) { Text("Mostrar aviso") }
+                OutlinedButton(onClick = vm::avisarTextoLargo) { Text("Mostrar aviso largo") }
             }
             TarjetaAvisos("Recordatorio") {
                 Button(onClick = { vm.recordarEn() }, enabled = faltan == null) {
