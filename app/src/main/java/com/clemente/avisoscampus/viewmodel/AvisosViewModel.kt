@@ -1,8 +1,10 @@
 package com.clemente.avisoscampus.viewmodel
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.clemente.avisoscampus.data.AvisosRepository
 import com.clemente.avisoscampus.model.Aviso
+import com.clemente.avisoscampus.model.Origen
 import com.clemente.avisoscampus.model.PermisoUi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -10,6 +12,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 class AvisosViewModel(private val repo: AvisosRepository) : ViewModel() {
     val avisos: StateFlow<List<Aviso>> = repo.avisos
@@ -22,5 +25,12 @@ class AvisosViewModel(private val repo: AvisosRepository) : ViewModel() {
 
     fun permisoRespondido(concedido: Boolean) {
         _permiso.value = if (concedido) PermisoUi.Concedido else PermisoUi.Denegado
+    }
+
+    fun avisarAhora() {
+        viewModelScope.launch {
+            val aviso = repo.registrar("Tarea lista", "Tu entrega fue registrada", Origen.BOTON)
+            _eventos.emit(aviso)
+        }
     }
 }

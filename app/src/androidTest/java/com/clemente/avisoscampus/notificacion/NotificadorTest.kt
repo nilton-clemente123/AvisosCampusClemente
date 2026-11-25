@@ -1,15 +1,44 @@
 package com.clemente.avisoscampus.notificacion
 
 import android.app.NotificationManager
+import android.app.Notification
+import android.Manifest
 import android.os.Build
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.clemente.avisoscampus.model.Aviso
+import com.clemente.avisoscampus.model.Origen
+import org.junit.Assert.assertTrue
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class NotificadorTest {
+    @Test
+    fun muestraDosAvisosSinReemplazarlos() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val context = instrumentation.targetContext
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            instrumentation.uiAutomation.grantRuntimePermission(
+                context.packageName, Manifest.permission.POST_NOTIFICATIONS
+            )
+        }
+        val manager = context.getSystemService(NotificationManager::class.java)
+        manager.cancelAll()
+        try {
+            assertTrue(Notificador.mostrar(context, Aviso(901, "Uno", "Texto", Origen.BOTON, "12:00:00")))
+            assertTrue(Notificador.mostrar(context, Aviso(902, "Dos", "Texto", Origen.BOTON, "12:00:01")))
+            Thread.sleep(500)
+            val individuales = manager.activeNotifications.filter {
+                it.notification.flags and Notification.FLAG_GROUP_SUMMARY == 0
+            }
+            assertEquals(setOf(901, 902), individuales.map { it.id }.toSet())
+        } finally {
+            manager.cancelAll()
+        }
+    }
+
     @Test
     fun canalExisteYSePuedeCrearVariasVeces() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
