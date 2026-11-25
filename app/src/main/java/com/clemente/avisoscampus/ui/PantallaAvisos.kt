@@ -1,5 +1,9 @@
 package com.clemente.avisoscampus.ui
 
+import android.Manifest
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -19,13 +23,28 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.clemente.avisoscampus.model.PermisoUi
+import com.clemente.avisoscampus.notificacion.Notificador
 import com.clemente.avisoscampus.viewmodel.AvisosViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PantallaAvisos(vm: AvisosViewModel) {
+    val contexto = LocalContext.current
+    val permiso by vm.permiso.collectAsState()
+    val lanzador = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+        vm.permisoRespondido(it)
+    }
+    LaunchedEffect(Unit) {
+        if (Notificador.tienePermiso(contexto)) vm.permisoRespondido(true)
+    }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -43,8 +62,19 @@ fun PantallaAvisos(vm: AvisosViewModel) {
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             TarjetaAvisos("Permiso de notificaciones") {
-                Text("Sin pedir")
-                Button(onClick = {}, enabled = false) { Text("Permitir notificaciones") }
+                val (etiqueta, color) = when (permiso) {
+                    PermisoUi.SinPedir -> "Sin pedir" to Color.Gray
+                    PermisoUi.Concedido -> "Permitido" to Color(0xFF1B7A3A)
+                    PermisoUi.Denegado -> "Denegado" to MaterialTheme.colorScheme.error
+                }
+                Text(etiqueta, color = color)
+                Button(onClick = {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        lanzador.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    } else {
+                        vm.permisoRespondido(true)
+                    }
+                }) { Text("Permitir notificaciones") }
             }
             TarjetaAvisos("Avisos") {
                 Button(onClick = {}, enabled = false) { Text("Mostrar aviso") }
