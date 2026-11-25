@@ -15,9 +15,11 @@ import androidx.core.content.ContextCompat
 import com.clemente.avisoscampus.MainActivity
 import com.clemente.avisoscampus.R
 import com.clemente.avisoscampus.model.Aviso
+import com.clemente.avisoscampus.model.PrioridadAviso
 
 object Notificador {
     const val CANAL = "avisos"
+    const val CANAL_URGENTES = "urgentes"
 
     fun tienePermiso(context: Context): Boolean =
         Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
@@ -27,7 +29,11 @@ object Notificador {
     fun crearCanal(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val canal = NotificationChannel(CANAL, "Avisos", NotificationManager.IMPORTANCE_DEFAULT)
-            context.getSystemService(NotificationManager::class.java).createNotificationChannel(canal)
+            val urgente = NotificationChannel(
+                CANAL_URGENTES, "Urgentes", NotificationManager.IMPORTANCE_HIGH
+            )
+            context.getSystemService(NotificationManager::class.java)
+                .createNotificationChannels(listOf(canal, urgente))
         }
     }
 
@@ -35,18 +41,23 @@ object Notificador {
     fun mostrar(context: Context, aviso: Aviso): Boolean {
         if (!tienePermiso(context)) return false
         if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) return false
+        val esUrgente = aviso.prioridad == PrioridadAviso.URGENTE
+        val canalId = if (esUrgente) CANAL_URGENTES else CANAL
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val canal = context.getSystemService(NotificationManager::class.java)
-                .getNotificationChannel(CANAL)
-            if (canal?.importance == NotificationManager.IMPORTANCE_NONE) return false
+                .getNotificationChannel(canalId)
+            if (canal == null || canal.importance == NotificationManager.IMPORTANCE_NONE) return false
         }
         val intent = Intent(context, MainActivity::class.java)
         val pendiente = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_IMMUTABLE)
-        val notificacion = NotificationCompat.Builder(context, CANAL)
+        val notificacion = NotificationCompat.Builder(context, canalId)
             .setSmallIcon(R.drawable.ic_notificacion)
             .setContentTitle(aviso.titulo)
             .setContentText(aviso.texto)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setPriority(
+                if (esUrgente) NotificationCompat.PRIORITY_HIGH else NotificationCompat.PRIORITY_DEFAULT
+            )
+            .setDefaults(NotificationCompat.DEFAULT_SOUND)
             .setAutoCancel(true)
             .setContentIntent(pendiente)
             .build()

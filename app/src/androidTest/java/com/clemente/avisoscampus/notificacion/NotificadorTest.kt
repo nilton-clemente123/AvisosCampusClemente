@@ -10,6 +10,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.clemente.avisoscampus.model.Aviso
 import com.clemente.avisoscampus.model.Origen
+import com.clemente.avisoscampus.model.PrioridadAviso
 import org.junit.Assert.assertTrue
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertFalse
@@ -48,12 +49,21 @@ class NotificadorTest {
         manager.cancelAll()
         try {
             assertTrue(Notificador.mostrar(context, Aviso(901, "Uno", "Texto", Origen.BOTON, "12:00:00")))
-            assertTrue(Notificador.mostrar(context, Aviso(902, "Dos", "Texto", Origen.BOTON, "12:00:01")))
+            assertTrue(Notificador.mostrar(context, Aviso(
+                902, "Dos", "Texto", Origen.RECORDATORIO, "12:00:01", PrioridadAviso.URGENTE
+            )))
             Thread.sleep(500)
             val individuales = manager.activeNotifications.filter {
                 it.notification.flags and Notification.FLAG_GROUP_SUMMARY == 0
             }
             assertEquals(setOf(901, 902), individuales.map { it.id }.toSet())
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                assertEquals(Notificador.CANAL, individuales.single { it.id == 901 }.notification.channelId)
+                assertEquals(
+                    Notificador.CANAL_URGENTES,
+                    individuales.single { it.id == 902 }.notification.channelId
+                )
+            }
             individuales.forEach {
                 assertNotNull(it.notification.contentIntent)
                 assertTrue(it.notification.contentIntent.isImmutable)
@@ -74,6 +84,10 @@ class NotificadorTest {
                 .getNotificationChannel(Notificador.CANAL)
             assertEquals("Avisos", canal.name.toString())
             assertEquals(NotificationManager.IMPORTANCE_DEFAULT, canal.importance)
+            val urgente = context.getSystemService(NotificationManager::class.java)
+                .getNotificationChannel(Notificador.CANAL_URGENTES)
+            assertEquals("Urgentes", urgente.name.toString())
+            assertEquals(NotificationManager.IMPORTANCE_HIGH, urgente.importance)
         }
     }
 }

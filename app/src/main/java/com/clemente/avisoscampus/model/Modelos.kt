@@ -6,12 +6,18 @@ enum class Origen(val texto: String) {
     MODO_AVION("Modo avión")
 }
 
+enum class PrioridadAviso {
+    NORMAL,
+    URGENTE
+}
+
 data class Aviso(
     val id: Int,
     val titulo: String,
     val texto: String,
     val origen: Origen,
-    val hora: String
+    val hora: String,
+    val prioridad: PrioridadAviso = PrioridadAviso.NORMAL
 )
 
 sealed interface PermisoUi {

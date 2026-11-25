@@ -5,6 +5,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.clemente.avisoscampus.data.AvisosRepositoryMemoria
 import com.clemente.avisoscampus.model.Aviso
 import com.clemente.avisoscampus.model.Origen
+import com.clemente.avisoscampus.model.PrioridadAviso
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -40,6 +41,8 @@ class RecordatorioTest {
             assertNull(vm.faltan.value)
             assertEquals(1, eventos.size)
             assertEquals(Origen.RECORDATORIO, vm.avisos.value.single().origen)
+            assertEquals(PrioridadAviso.URGENTE, eventos.single().prioridad)
+            assertEquals(eventos.single(), vm.avisos.value.single())
         } finally {
             instrumentation.runOnMainSync { vm.cancelarRecordatorio(); scope.cancel() }
         }

@@ -6,6 +6,7 @@ import com.clemente.avisoscampus.data.AvisosRepository
 import com.clemente.avisoscampus.model.Aviso
 import com.clemente.avisoscampus.model.Origen
 import com.clemente.avisoscampus.model.PermisoUi
+import com.clemente.avisoscampus.model.PrioridadAviso
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
@@ -73,7 +74,8 @@ class AvisosViewModel(private val repo: AvisosRepository) : ViewModel() {
                 }
                 coroutineContext.ensureActive()
                 val aviso = repo.registrar(
-                    "Recordatorio", "Revisa tu laboratorio pendiente", Origen.RECORDATORIO
+                    "Recordatorio", "Revisa tu laboratorio pendiente", Origen.RECORDATORIO,
+                    PrioridadAviso.URGENTE
                 )
                 _eventos.emit(aviso)
             } finally {
